@@ -137,7 +137,6 @@ def corregir_outliers_fecha_nacimiento(df: pd.DataFrame) -> pd.DataFrame:
         return df
     
     df_proc = df.copy()
-    registros_antes = len(df_proc)
     
     # Convertir a datetime
     df_proc[columna] = pd.to_datetime(df_proc[columna], errors='coerce')
@@ -168,14 +167,21 @@ def corregir_outliers_fecha_nacimiento(df: pd.DataFrame) -> pd.DataFrame:
     total_corregir = mask_corregir.sum()
     
     if total_corregir > 0:
-        # Generar fechas aleatorias dentro del rango válido
-        fechas_aleatorias = pd.to_datetime(
-            np.random.randint(
-                limite_inferior.value,
-                limite_superior.value,
-                size=total_corregir
-            )
+        # ✅ SOLUCIÓN: Generar fechas usando pandas date_range en lugar de numpy
+        # Convertir a días desde epoch para facilitar
+        dias_min = (limite_inferior - pd.Timestamp('1970-01-01')).days
+        dias_max = (limite_superior - pd.Timestamp('1970-01-01')).days
+        
+        # Generar días aleatorios
+        dias_aleatorios = np.random.randint(
+            dias_min, 
+            dias_max, 
+            size=total_corregir,
+            dtype=np.int64  # ✅ Usar int64 en lugar de int32
         )
+        
+        # Convertir días a fechas
+        fechas_aleatorias = pd.to_datetime(dias_aleatorios, unit='D', origin='unix')
         
         df_proc.loc[mask_corregir, columna] = fechas_aleatorias
         
@@ -252,39 +258,67 @@ def corregir_outliers_avaluo(df: pd.DataFrame) -> pd.DataFrame:
     """Corrige outliers en VVDAAVAL. Rango: 50,000,000 - 300,000,000"""
     return corregir_outliers_numericos(df, 'VVDAAVAL', 50000000, 300000000)
 
-
 def unificar_columnas_empleo(df: pd.DataFrame) -> pd.DataFrame:
-    """Unifica columnas de información laboral."""
+    """
+    Unifica columnas con lógica R: solo concatena si ambas tienen datos.
+    """
     logger.info("\n📋 PASO 4: Unificación de columnas de empleo")
-    
+
     df_proc = df.copy()
-    
-    # ACT_LAB
+
+    # ACT_LAB (OCUPACION + INDPACTIVI)
     if 'ocupacion' in df_proc.columns and 'indpactivi' in df_proc.columns:
-        df_proc['act_lab'] = (
-            df_proc['ocupacion'].fillna('').astype(str) + ' ' + 
-            df_proc['indpactivi'].fillna('').astype(str)
-        ).str.strip()
-        logger.info("  ✅ Creada 'act_lab'")
-    
-    # EMPRESA
+        df_proc['act_lab'] = df_proc.apply(
+            lambda row: unificar_dos_columnas(row['ocupacion'], row['indpactivi']),
+            axis=1
+        )
+        logger.info("  ✅ Creada 'act_lab' con lógica R")
+
+    # EMPRESA (LBEMPRESA + INDPRZSOCI)
     if 'lbempresa' in df_proc.columns and 'indprzsoci' in df_proc.columns:
-        df_proc['empresa'] = (
-            df_proc['lbempresa'].fillna('').astype(str) + ' ' + 
-            df_proc['indprzsoci'].fillna('').astype(str)
-        ).str.strip()
-        logger.info("  ✅ Creada 'empresa'")
-    
-    # CARGOS
+        df_proc['empresa'] = df_proc.apply(
+            lambda row: unificar_dos_columnas(row['lbempresa'], row['indprzsoci']),
+            axis=1
+        )
+        logger.info("  ✅ Creada 'empresa' con lógica R")
+
+    # CARGOS (CARGO + INDPNOMBRE)
     if 'cargo' in df_proc.columns and 'indpnombre' in df_proc.columns:
-        df_proc['cargos'] = (
-            df_proc['cargo'].fillna('').astype(str) + ' ' + 
-            df_proc['indpnombre'].fillna('').astype(str)
-        ).str.strip()
-        logger.info("  ✅ Creada 'cargos'")
-    
+        df_proc['cargos'] = df_proc.apply(
+            lambda row: unificar_dos_columnas(row['cargo'], row['indpnombre']),
+            axis=1
+        )
+        logger.info("  ✅ Creada 'cargos' con lógica R")
+
     return df_proc
 
+
+def unificar_dos_columnas(col1, col2):
+    """
+    Lógica del R: ifelse anidado
+    - Si ambas vacías: retorna ""
+    - Si solo col1 vacía: retorna col2
+    - Si solo col2 vacía: retorna col1
+    - Si ambas llenas: retorna "col1 col2"
+    """
+    import pandas as pd
+
+    # Convertir a string y manejar NaN
+    val1 = str(col1).strip() if pd.notna(col1) else ""
+    val2 = str(col2).strip() if pd.notna(col2) else ""
+
+    # Ambas vacías
+    if not val1 and not val2:
+        return ""
+
+    # Solo una tiene datos
+    if not val1:
+        return val2
+    if not val2:
+        return val1
+
+    # Ambas tienen datos: concatenar
+    return f"{val1} {val2}"
 
 def categorizar_estado_civil(df: pd.DataFrame) -> pd.DataFrame:
     """Categoriza estado civil agrupando variantes."""
