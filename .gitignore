@@ -1,0 +1,80 @@
+# ===========================================
+# ARCHIVOS DE DATOS Y CONFIGURACIÓN
+# ===========================================
+
+# Archivos Excel
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+
+# Archivos de texto
+*.txt
+*.log
+*.csv
+
+# Archivos JSON
+*.json
+
+# Archivos R
+*.R
+*.RData
+*.Rhistory
+*.Rproj
+
+# ===========================================
+# ARCHIVOS TEMPORALES Y DEL SISTEMA
+# ===========================================
+
+# Archivos temporales de Office
+~.xlsx
+~.xls
+~.doc*
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# ===========================================
+# ENTORNOS VIRTUALES Y DEPENDENCIAS
+# ===========================================
+
+# Entornos virtuales de Python
+venv/
+env/
+.venv/
+ENV/
+
+# Dependencias de Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# ===========================================
+# ARCHIVOS DE IDE Y EDITORES
+# ===========================================
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# ===========================================
+# LOGS ESPECÍFICOS
+# ===========================================
+
+resultados_api.log
+debug.log
+error.log
+
+# ===========================================
+# CARPETAS TEMPORALES
+# ===========================================
+
+backup/
+temp/
+tmp/
