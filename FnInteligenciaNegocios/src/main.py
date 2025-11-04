@@ -7,6 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from src.procesadores.procesador import unir_datasets
 from src.cargador_datos import cargador
 from src.transformadores import (
     filtrar_finansuenos_ac,
@@ -21,6 +22,7 @@ from src.transformadores import (
 )
 from src.utilidades.logger import configurar_logger, guardar_resumen_ejecucion
 from src.utilidades.validador import diagnosticar_dataframe, validar_dataframe, generar_reporte_calidad
+from src.utilidades.exportador import guardar_excel
 
 
 def main():
@@ -328,22 +330,37 @@ def main():
             "recaudos": df_recaudos
         }
         
-        # Mostrar tabla de resumen
-        logger.info("📋 Tabla de Registros:")
-        logger.info("-" * 70)
-        logger.info(f"{'Dataset':<20} | {'Registros':<15} | {'Columnas':<10} | {'Estado':<10}")
-        logger.info("-" * 70)
-        for nombre, df in datos.items():
-            if df is not None and len(df) > 0:
-                registros = f"{len(df):,}"
-                columnas = f"{len(df.columns)}"
-                estado = "✅"
-            else:
-                registros = "0"
-                columnas = "0"
-                estado = "⚠️"
-            logger.info(f"{nombre.upper():<20} | {registros:<15} | {columnas:<10} | {estado:<10}")
-        logger.info("-" * 70)
+        # Unir todos los datasets
+        logger.info("🔄 Realizando joins...")
+        BaseFNZ_final = unir_datasets(
+            df_fnz007=df_fnz007,
+            df_ac=df_ac,
+            df_fnz001=df_fnz001,
+            df_edades=df_edades,
+            df_r05=df_r05,
+            df_recaudos=df_recaudos,
+            dict_auxiliares=dict_auxiliares
+        )
+
+        logger.info(f"✅ BaseFNZ final creado: {len(BaseFNZ_final):,} registros")
+        logger.info("")
+
+        # ============================================
+        # FASE 4: EXPORTACIÓN
+        # ============================================
+        logger.info("=" * 70)
+        logger.info("💾 FASE 4: EXPORTACIÓN DE RESULTADOS")
+        logger.info("=" * 70)
+        logger.info("")
+
+        # Guardar BaseFNZ final
+        ruta_guardada = guardar_excel(BaseFNZ_final, "BaseFNZ_Final", "salidas")
+
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("🎉 PROCESO COMPLETADO EXITOSAMENTE")
+        logger.info("=" * 70)
+        logger.info(f"📁 Archivo guardado en: {ruta_guardada}")
         logger.info("")
         
         # Calcular tiempo de ejecución
