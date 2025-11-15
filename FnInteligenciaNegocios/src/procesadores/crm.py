@@ -126,41 +126,33 @@ def unir_con_ac_primer_registro(crm: pd.DataFrame, df_ac: pd.DataFrame) -> pd.Da
 def calcular_edad(crm: pd.DataFrame) -> pd.DataFrame:
     """
     Calcula la edad a partir de la fecha de nacimiento.
-    
-    Según R (líneas ~917-918):
-    CRM$fs1nacfec <- as.Date(CRM$fs1nacfec, format = "%Y-%m-%d")
-    CRM$edad <- as.numeric(difftime(Sys.Date(), CRM$fs1nacfec, units = "weeks")) %/% 52.25
     """
     col_nacimiento = None
-    
-    # Buscar columna de fecha de nacimiento (case-insensitive)
     for col in crm.columns:
         if 'nacfec' in col.lower() or 'fecha_nacimiento' in col.lower():
             col_nacimiento = col
             break
-    
+
     if col_nacimiento is None:
         logger.warning("   ⚠️  No se encontró columna de fecha de nacimiento")
         return crm
-    
-    # Convertir a datetime
+
     crm[col_nacimiento] = pd.to_datetime(crm[col_nacimiento], errors='coerce')
-    
-    # Calcular edad en años
+
     fecha_actual = datetime.now()
-    crm['edad'] = crm[col_nacimiento].apply(
-        lambda x: (fecha_actual - x).days / 365.25 if pd.notna(x) else np.nan
-    )
     
-    # Convertir a entero
-    crm['edad'] = crm['edad'].astype('Int64')  # Int64 permite NaN
+    # Calcular edad en años decimales
+    edad_decimal = (fecha_actual - crm[col_nacimiento]).dt.days / 365.25
     
+    # Convertir a enteros (edad cumplida) de forma vectorizada
+    crm['edad'] = np.floor(edad_decimal).astype('Int64')
+    
+    logger.debug(f"   Muestra de edades calculadas:\n{crm['edad'].head(50)}")
+
     validas = crm['edad'].notna().sum()
     edad_promedio = crm['edad'].mean()
-    
     logger.info(f"   ✅ Edad calculada: {validas:,} registros válidos")
     logger.info(f"   📊 Edad promedio: {edad_promedio:.1f} años")
-    
     return crm
 
 
