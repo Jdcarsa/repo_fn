@@ -54,6 +54,10 @@ def cargar_excel_con_config(ruta: Path, hojas_config: dict,
             if nombre_dataset == "FNZ007":
                 df = corregir_fecha_nacimiento_fnz007(df, hoja)
             
+            # CORRECCIÓN 3: ANALISIS_CARTERA - Eliminar 'fechadoc' en ciertos cortes
+            if nombre_dataset == "ANALISIS_CARTERA":
+                df = corregir_fechadoc_ac(df, hoja)
+            
             # Agregar fecha de corte si existe
             if fecha_str is not None:
                 df["corte"] = pd.to_datetime(fecha_str)
@@ -123,6 +127,28 @@ def corregir_fecha_nacimiento_fnz007(df: pd.DataFrame, hoja: str) -> pd.DataFram
                 logger.info(f"  🔧 {hoja}: Fecha nacimiento corregida ({nulos} nulos)")
             except Exception as e:
                 logger.warning(f"  ⚠️  {hoja}: No se pudo corregir fecha nacimiento: {e}")
+    
+    return df
+
+
+def corregir_fechadoc_ac(df: pd.DataFrame, hoja: str) -> pd.DataFrame:
+    """
+    Elimina la columna 'fechadoc' en ciertos cortes de Análisis de Cartera.
+    
+    Según R (líneas ~340-343):
+    ago24$fechadoc <- NULL
+    feb25$fechadoc <- NULL
+    mar25$fechadoc <- NULL
+    sep25$fechadoc <- NULL
+    """
+    cortes_con_fechadoc = ["AGOSTO 24", "FEBRERO 25", "MARZO 25", "SEPTIEMBRE 25"]
+    
+    if hoja in cortes_con_fechadoc:
+        if 'fechadoc' in df.columns:
+            df = df.drop(columns=['fechadoc'])
+            logger.info(f"  🔧 {hoja}: Eliminada columna 'fechadoc'")
+        else:
+            logger.info(f"  ℹ️  {hoja}: No tiene columna 'fechadoc' para eliminar")
     
     return df
 

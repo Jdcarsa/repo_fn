@@ -1,96 +1,226 @@
+"""
+Transformador para R05.
+CORRECCIÓN CRÍTICA: cedula_numero usa "_" (guion bajo), no "-" (guion)
+"""
+
 import pandas as pd
 from .base import logger, convertir_columnas_minusculas
 
 def procesar_r05(df: pd.DataFrame) -> pd.DataFrame:
     """
     Realiza la limpieza y transformación del dataframe R05.
+    
+    ⚠️ CRÍTICO: Según R (línea ~711):
+    ABONOS$cedula_numero <- paste(ABONOS$NIT, ABONOS$MCNNUMCRU2, sep = "_")
+    
+    R05 usa guion bajo "_" para separar, NO guion "-" como otros datasets.
     """
     if df is None:
         logger.warning("El dataframe de R05 es None. Se omite el procesamiento.")
         return None
 
-    logger.info("Iniciando limpieza y procesamiento de R05...")
+    logger.info("="*70)
+    logger.info("🔄 TRANSFORMACIÓN R05")
+    logger.info("="*70)
+    logger.info("")
+    
     df_proc = df.copy()
     registros_antes = len(df_proc)
 
-    # 1. Convertir nombres de columnas a minúsculas
+    # PASO 1: Convertir nombres de columnas a minúsculas
+    logger.info("📋 PASO 1: Convertir columnas a minúsculas")
     df_proc = convertir_columnas_minusculas(df_proc, "R05")
-    logger.info(f"Columnas disponibles en R05: {list(df_proc.columns)}")
+    logger.info(f"   Columnas disponibles: {list(df_proc.columns)}")
+    logger.info("")
 
-    # 2. ✅ SOLUCIÓN: Eliminar mcnfecha si existe, porque 'corte' ya viene del cargador
+    # PASO 2: Eliminar mcnfecha (ya viene 'corte' del cargador)
+    logger.info("📋 PASO 2: Eliminar mcnfecha")
     if 'mcnfecha' in df_proc.columns:
         df_proc = df_proc.drop(columns=['mcnfecha'])
-        logger.info("✅ Eliminada columna 'mcnfecha' (ya existe 'corte' del cargador)")
+        logger.info("   ✅ Eliminada columna 'mcnfecha' (ya existe 'corte' del cargador)")
+    else:
+        logger.info("   ℹ️  No existe 'mcnfecha'")
+    logger.info("")
     
-    # 3. Identificar y renombrar otras columnas específicas para R05
+    # PASO 3: Identificar y renombrar columnas específicas
+    logger.info("📋 PASO 3: Identificar y renombrar columnas")
+    df_proc = identificar_y_renombrar_r05(df_proc)
+    logger.info("")
+
+    # PASO 4: Convertir tipos de datos
+    logger.info("📋 PASO 4: Convertir tipos de datos")
+    df_proc = convertir_tipos_r05(df_proc)
+    logger.info("")
+
+    # PASO 5: Crear llave cedula_numero con "_" (guion bajo)
+    logger.info("📋 PASO 5: Crear cedula_numero (con guion bajo '_')")
+    df_proc = crear_llave_cedula_numero_r05(df_proc)
+    logger.info("")
+
+    # PASO 6: Filtrar por abono > 0
+    logger.info("📋 PASO 6: Filtrar abono > 0")
+    df_proc = filtrar_abono_positivo(df_proc)
+    logger.info("")
+
+    # PASO 7: Agrupar duplicados y renombrar a ABONO1
+    logger.info("📋 PASO 7: Agrupar duplicados")
+    df_proc = agrupar_duplicados_r05(df_proc)
+    logger.info("")
+
+    # Resumen final
+    logger.info("="*70)
+    logger.info("✅ R05 TRANSFORMADO")
+    logger.info("="*70)
+    logger.info(f"Registros: {registros_antes:,} → {len(df_proc):,}")
+    logger.info(f"Columnas finales: {len(df_proc.columns)}")
+    logger.info(f"Columnas: {list(df_proc.columns)}")
+    logger.info("="*70)
+    logger.info("")
+    
+    return df_proc
+
+
+def identificar_y_renombrar_r05(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Identifica y renombra columnas específicas de R05.
+    """
     renames = {}
     
-    # Buscar columnas específicas de R05
-    if 'nit' in df_proc.columns:
+    # Buscar columna NIT/cedula
+    if 'nit' in df.columns:
         renames['nit'] = 'cedula'
-    elif any('nit' in col for col in df_proc.columns):
-        col_nit = [col for col in df_proc.columns if 'nit' in col][0]
+    elif any('nit' in col for col in df.columns):
+        col_nit = [col for col in df.columns if 'nit' in col][0]
         renames[col_nit] = 'cedula'
     
-    # Buscar mcnnumcru2 que es el número de obligación en R05
-    if 'mcnnumcru2' in df_proc.columns:
+    # Buscar mcnnumcru2 (número de obligación)
+    if 'mcnnumcru2' in df.columns:
         renames['mcnnumcru2'] = 'numero'
-    elif any('numcru2' in col for col in df_proc.columns):
-        col_numero = [col for col in df_proc.columns if 'numcru2' in col][0]
+    elif any('numcru2' in col for col in df.columns):
+        col_numero = [col for col in df.columns if 'numcru2' in col][0]
         renames[col_numero] = 'numero'
+    
+    # Buscar columna abono
+    if 'abono' in df.columns:
+        pass  # Ya está bien nombrada
+    elif any('abono' in col.lower() for col in df.columns):
+        col_abono = [col for col in df.columns if 'abono' in col.lower()][0]
+        renames[col_abono] = 'abono'
 
     if renames:
-        df_proc.rename(columns=renames, inplace=True)
-        logger.info(f"Columnas renombradas en R05: {renames}")
-
-    logger.info(f"Columnas finales en R05: {list(df_proc.columns)}")
-    
-    # 4. Convertir tipos de datos
-    if 'corte' in df_proc.columns:
-        df_proc['corte'] = pd.to_datetime(df_proc['corte'], errors='coerce')
-        nulos_corte = df_proc['corte'].isnull().sum()
-        if nulos_corte > 0:
-            logger.warning(f"⚠️ {nulos_corte:,} registros con 'corte' nulo")
-    
-    if 'abono' in df_proc.columns:
-        df_proc['abono'] = pd.to_numeric(df_proc['abono'], errors='coerce')
-        nulos_abono = df_proc['abono'].isnull().sum()
-        if nulos_abono > 0:
-            logger.warning(f"⚠️ {nulos_abono:,} registros con 'abono' nulo")
-
-    # 5. Crear la llave 'cedula_numero'
-    if 'cedula' in df_proc.columns and 'numero' in df_proc.columns:
-        df_proc['cedula'] = df_proc['cedula'].astype(str).fillna('').str.strip()
-        df_proc['numero'] = df_proc['numero'].astype(str).fillna('').str.strip()
-        df_proc['cedula_numero'] = df_proc['cedula'] + '-' + df_proc['numero']
-        logger.info(f"✅ Llave cedula_numero creada para {len(df_proc):,} registros")
+        df.rename(columns=renames, inplace=True)
+        logger.info(f"   ✅ Columnas renombradas: {renames}")
     else:
-        logger.error("❌ No se pudieron encontrar las columnas para crear cedula_numero")
-        logger.error(f"Columnas disponibles: {list(df_proc.columns)}")
-        return None
+        logger.warning("   ⚠️  No se encontraron columnas para renombrar")
 
-    # 6. Filtrar por abono > 0
-    if 'abono' in df_proc.columns:
-        registros_antes_filtro = len(df_proc)
-        df_proc = df_proc[df_proc['abono'] > 0].copy()
-        eliminados = registros_antes_filtro - len(df_proc)
-        logger.info(f"✅ Filtrado por abono > 0: {registros_antes_filtro:,} → {len(df_proc):,} ({eliminados:,} eliminados)")
+    logger.info(f"   📋 Columnas finales: {list(df.columns)}")
+    
+    return df
 
-    # 7. Agrupar duplicados
-    if 'cedula_numero' in df_proc.columns and 'corte' in df_proc.columns and 'abono' in df_proc.columns:
-        registros_antes_agg = len(df_proc)
-        
-        # Verificar duplicados
-        duplicados = df_proc.duplicated(subset=['cedula_numero', 'corte']).sum()
-        logger.info(f"📊 Encontrados {duplicados:,} registros duplicados")
-        
-        if duplicados > 0:
-            df_proc = df_proc.groupby(['cedula_numero', 'corte'], as_index=False)['abono'].sum()
-            df_proc.rename(columns={'abono': 'ABONO1'}, inplace=True)
-            logger.info(f"✅ Duplicados agrupados: {registros_antes_agg:,} → {len(df_proc):,}")
+
+def convertir_tipos_r05(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convierte tipos de datos en R05.
+    """
+    # Convertir 'corte' a datetime
+    if 'corte' in df.columns:
+        df['corte'] = pd.to_datetime(df['corte'], errors='coerce')
+        nulos_corte = df['corte'].isnull().sum()
+        if nulos_corte > 0:
+            logger.warning(f"   ⚠️  {nulos_corte:,} registros con 'corte' nulo")
         else:
-            df_proc.rename(columns={'abono': 'ABONO1'}, inplace=True)
-            logger.info(f"✅ Sin duplicados, renombrada columna a 'ABONO1'")
+            logger.info(f"   ✅ 'corte' convertido a datetime")
+    
+    # Convertir 'abono' a numérico
+    if 'abono' in df.columns:
+        df['abono'] = pd.to_numeric(df['abono'], errors='coerce')
+        nulos_abono = df['abono'].isnull().sum()
+        if nulos_abono > 0:
+            logger.warning(f"   ⚠️  {nulos_abono:,} registros con 'abono' nulo")
+        else:
+            logger.info(f"   ✅ 'abono' convertido a numérico")
+    
+    # Convertir 'cedula' y 'numero' a string
+    if 'cedula' in df.columns:
+        df['cedula'] = df['cedula'].astype(str).fillna('').str.strip()
+        logger.info(f"   ✅ 'cedula' convertido a string")
+    
+    if 'numero' in df.columns:
+        df['numero'] = df['numero'].astype(str).fillna('').str.strip()
+        logger.info(f"   ✅ 'numero' convertido a string")
+    
+    return df
 
-    logger.info(f"✅ R05 completado: {registros_antes:,} → {len(df_proc):,} registros")
-    return df_proc
+
+def crear_llave_cedula_numero_r05(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Crea la llave cedula_numero con GUION BAJO "_".
+    
+    ⚠️ CRÍTICO: R05 usa "_" no "-"
+    Según R: ABONOS$cedula_numero <- paste(ABONOS$NIT, ABONOS$MCNNUMCRU2, sep = "_")
+    """
+    if 'cedula' not in df.columns or 'numero' not in df.columns:
+        logger.error("   ❌ No se encontraron 'cedula' y 'numero'")
+        logger.error(f"   Columnas disponibles: {list(df.columns)}")
+        return df
+    
+    # ✅ USAR "_" (guion bajo) como separador
+    df['cedula_numero'] = df['cedula'] + '_' + df['numero']
+    
+    llaves_validas = df['cedula_numero'].notna().sum()
+    llaves_vacias = (df['cedula_numero'] == '_').sum()
+    
+    logger.info(f"   ✅ cedula_numero creada con '_' (guion bajo)")
+    logger.info(f"   📊 Llaves válidas: {llaves_validas:,}")
+    
+    if llaves_vacias > 0:
+        logger.warning(f"   ⚠️  {llaves_vacias:,} llaves vacías ('_')")
+    
+    return df
+
+
+def filtrar_abono_positivo(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filtra registros con abono > 0.
+    """
+    if 'abono' not in df.columns:
+        logger.warning("   ⚠️  No existe columna 'abono'")
+        return df
+    
+    registros_antes = len(df)
+    df = df[df['abono'] > 0].copy()
+    eliminados = registros_antes - len(df)
+    
+    logger.info(f"   ✅ Filtro aplicado: {registros_antes:,} → {len(df):,}")
+    logger.info(f"   📊 Eliminados: {eliminados:,}")
+    
+    return df
+
+
+def agrupar_duplicados_r05(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Agrupa duplicados por cedula_numero y corte, sumando abono.
+    Renombra 'abono' a 'ABONO1'.
+    """
+    if not all(col in df.columns for col in ['cedula_numero', 'corte', 'abono']):
+        logger.warning("   ⚠️  Faltan columnas necesarias para agrupar")
+        return df
+    
+    registros_antes = len(df)
+    
+    # Verificar duplicados
+    duplicados = df.duplicated(subset=['cedula_numero', 'corte']).sum()
+    logger.info(f"   📊 Duplicados encontrados: {duplicados:,}")
+    
+    if duplicados > 0:
+        # Agrupar
+        df = df.groupby(['cedula_numero', 'corte'], as_index=False)['abono'].sum()
+        logger.info(f"   ✅ Agrupación completada: {registros_antes:,} → {len(df):,}")
+    else:
+        logger.info(f"   ℹ️  Sin duplicados")
+    
+    # Renombrar 'abono' a 'ABONO1'
+    df.rename(columns={'abono': 'ABONO1'}, inplace=True)
+    logger.info(f"   ✅ Columna renombrada: 'abono' → 'ABONO1'")
+    
+    return df
