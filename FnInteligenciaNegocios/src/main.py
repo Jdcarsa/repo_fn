@@ -224,6 +224,7 @@ def main():
             dict_auxiliares=dict_auxiliares
         )
         logger.info(f"✅ BaseFNZ creado: {len(BaseFNZ_final):,} registros")
+        logger.info(f"Base FNZ columnas: {BaseFNZ_final.columns.tolist()}")
         logger.info("")
         
         # 3.2 Cosechas
@@ -298,15 +299,15 @@ def main():
         logger.info("")
         
         # 4.4 Guardar BaseFNZ (opcional - si es necesario)
-        logger.info("4️⃣  Guardando BaseFNZ (completo)...")
-        ruta_basefnz = guardar_excel(BaseFNZ_final, "BaseFNZ_Completo", "./datos/salidas")
-        logger.info("")
+        #logger.info("4️⃣  Guardando BaseFNZ (completo)...")
+        #ruta_basefnz = guardar_excel(BaseFNZ_final, "BaseFNZ_Completo", "./datos/salidas")
+        #logger.info("")
         
         # 4.5 Guardar BaseEdades (si existe)
-        if df_edades is not None and len(df_edades) > 0:
-            logger.info("5️⃣  Guardando BaseEdades...")
-            ruta_edades = guardar_excel(df_edades, "BaseEdades", "./datos/salidas")
-            logger.info("")
+        #if df_edades is not None and len(df_edades) > 0:
+            #logger.info("5️⃣  Guardando BaseEdades...")
+            #ruta_edades = guardar_excel(df_edades, "BaseEdades", "./datos/salidas")
+            #logger.info("")
         
         logger.info("=" * 70)
         logger.info("🎉 EXPORTACIÓN COMPLETADA")
@@ -316,7 +317,7 @@ def main():
         logger.info(f"   1. {ruta_cosechas.name}")
         logger.info(f"   2. {ruta_crm.name}")
         logger.info(f"   3. {ruta_comportamiento.name}")
-        logger.info(f"   4. {ruta_basefnz.name}")
+        #logger.info(f"   4. {ruta_basefnz.name}")
         if len(Cosechas_eliminados) > 0:
             logger.info(f"   5. Cosechas_Eliminados_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx")
         if df_edades is not None:

@@ -53,7 +53,7 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     
     # Crear Cosechas inicial
     Cosechas = df_fnz007[columnas_base].copy()
-    
+
     # Agregar corte2 si existe (es corte.x en el R)
     if 'corte2' in df_fnz007.columns:
         Cosechas['corte2'] = df_fnz007['corte2']
@@ -117,7 +117,7 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     logger.info(f"📊 Memoria: {Cosechas.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
     logger.info("="*70)
     logger.info("")
-    
+    Cosechas = Cosechas.drop_duplicates().reset_index(drop=True)
     return Cosechas, eliminados
 
 

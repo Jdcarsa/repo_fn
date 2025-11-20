@@ -34,7 +34,7 @@ def unir_datasets(df_fnz007, df_ac, df_fnz001, df_edades, df_r05, df_recaudos, d
     logger.info("-"*40)
     
     # Preparar FNZ001 para el join
-    fnz001_para_join = df_fnz001[['numero', 'cedula', 'corte']].copy()
+    fnz001_para_join = df_fnz001[['numero', 'cedula', 'corte','valor']].copy()
     
     # Eliminar duplicados por 'numero' (keeping first)
     registros_fnz001_antes = len(fnz001_para_join)

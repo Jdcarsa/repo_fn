@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from .base import logger, convertir_columnas_minusculas, crear_llave_cedula_numero, eliminar_columnas
-
+#NOMBRE DIAS ATRAS ESTA MAL
 def filtrar_finansuenos_ac(df_ac: pd.DataFrame) -> pd.DataFrame:
     """
     Filtra el DataFrame de Análisis de Cartera para incluir solo registros
@@ -27,7 +27,7 @@ def procesar_analisis_cartera(df: pd.DataFrame) -> pd.DataFrame:
     
     # 1. Convertir nombres de columnas a minúsculas
     df_proc = convertir_columnas_minusculas(df_proc, "Análisis de Cartera")
-
+    logger.info(f"Columnas después de convertir a minúsculas: {df_proc.columns.tolist()}")
     # 2. LIMPIAR cedula y numero ANTES de crear la llave
     from .base import limpiar_columnas_numericas_como_string
     df_proc = limpiar_columnas_numericas_como_string(df_proc, ['cedula', 'numero'])

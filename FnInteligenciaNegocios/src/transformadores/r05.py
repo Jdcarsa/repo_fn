@@ -57,8 +57,8 @@ def procesar_r05(df: pd.DataFrame) -> pd.DataFrame:
     df_proc = convertir_tipos_r05(df_proc)
     logger.info("")
 
-    # PASO 5: Crear llave cedula_numero con "_" (guion bajo)
-    logger.info("📋 PASO 5: Crear cedula_numero (con guion bajo '_')")
+    # PASO 5: Crear llave cedula_numero con "-" 
+    logger.info("📋 PASO 5: Crear cedula_numero (con guion bajo '-')")
     df_proc = crear_llave_cedula_numero_r05(df_proc)
     logger.info("")
 
@@ -171,7 +171,6 @@ def crear_llave_cedula_numero_r05(df: pd.DataFrame) -> pd.DataFrame:
         logger.error(f"   Columnas disponibles: {list(df.columns)}")
         return df
     
-    # ✅ USAR "_" (guion bajo) como separador
     df['cedula_numero'] = df['cedula'] + '-' + df['numero']
     
     llaves_validas = df['cedula_numero'].notna().sum()

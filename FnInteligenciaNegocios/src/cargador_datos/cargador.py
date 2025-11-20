@@ -164,22 +164,74 @@ def corregir_fecha_nacimiento_fnz007(df: pd.DataFrame, hoja: str) -> pd.DataFram
 
 def corregir_fechadoc_ac(df: pd.DataFrame, hoja: str) -> pd.DataFrame:
     """
-    Elimina la columna 'fechadoc' en ciertos cortes de Análisis de Cartera.
+    Corrige columnas según el corte temporal en Análisis de Cartera.
     
-    Según R (líneas ~340-343):
-    ago24$fechadoc <- NULL
-    feb25$fechadoc <- NULL
-    mar25$fechadoc <- NULL
-    sep25$fechadoc <- NULL
+    Correcciones:
+    1. Elimina 'fechadoc' en ciertos cortes específicos
+    2. Normaliza nombres de columna de días de atraso (busca todas las variaciones)
+    
+    Maneja variaciones:
+    - 'DIAS ATRASO', 'DIAS ATRASOS', 'diasatras', 'Dias Atraso', etc.
+    - Búsqueda case-insensitive
+    - Con/sin tildes, con/sin espacios
     """
+    # Cortes que requieren eliminación de fechadoc
     cortes_con_fechadoc = ["AGOSTO 24", "FEBRERO 25", "MARZO 25", "SEPTIEMBRE 25"]
     
-    if hoja in cortes_con_fechadoc:
-        if 'fechadoc' in df.columns:
-            df = df.drop(columns=['fechadoc'])
-            logger.info(f"  🔧 {hoja}: Eliminada columna 'fechadoc'")
+    # === CORRECCIÓN 1: ELIMINAR FECHADOC ===
+    hoja_upper = hoja.upper().strip()
+    
+    if hoja_upper in [corte.upper() for corte in cortes_con_fechadoc]:
+        # Buscar columna fechadoc (case-insensitive)
+        cols_fechadoc = [col for col in df.columns if col.lower() == 'fechadoc']
+        
+        if cols_fechadoc:
+            df = df.drop(columns=cols_fechadoc)
+            logger.info(f"  🔧 {hoja}: Eliminada columna '{cols_fechadoc[0]}'")
         else:
-            logger.info(f"  ℹ️  {hoja}: No tiene columna 'fechadoc' para eliminar")
+            logger.info(f"  ℹ️  {hoja}: No tiene columna 'fechadoc'")
+    
+    # === CORRECCIÓN 2: NORMALIZAR DIAS ATRASO ===
+    # Buscar TODAS las variaciones posibles (case-insensitive, con/sin espacio)
+    col_dias_atraso = None
+    
+    # Patrones a buscar (de más específico a más general)
+    patrones_busqueda = [
+        'DIAS ATRASO',      # Con espacio (más común en cortes antiguos)
+        'DIAS ATRASOS',     # Plural
+        'DIASATRASO',       # Sin espacio
+        'DIASATRAS',        # Abreviado
+        'diasatras',        # Ya normalizado
+        'DIAS_ATRASO',      # Con guion bajo
+        'dias atraso',      # Minúsculas con espacio
+        'Dias Atraso',      # Title case
+    ]
+    
+    # Buscar la columna (case-insensitive, ignorando espacios extra)
+    for col in df.columns:
+        col_normalizado = col.upper().strip().replace('_', ' ')
+        
+        for patron in patrones_busqueda:
+            patron_normalizado = patron.upper().strip().replace('_', ' ')
+            
+            if col_normalizado == patron_normalizado:
+                col_dias_atraso = col
+                break
+        
+        if col_dias_atraso:
+            break
+    
+    # Renombrar si se encontró y no es el nombre correcto
+    if col_dias_atraso:
+        if col_dias_atraso != 'diasatras':
+            df = df.rename(columns={col_dias_atraso: 'diasatras'})
+            logger.info(f"  🔧 {hoja}: Renombrada '{col_dias_atraso}' → 'diasatras'")
+        else:
+            logger.info(f"  ✅ {hoja}: Ya tiene 'diasatras'")
+    else:
+        # No se encontró - ADVERTENCIA
+        logger.warning(f"  ⚠️  {hoja}: No se encontró columna de días de atraso")
+        logger.warning(f"      Columnas disponibles: {list(df.columns)[:15]}")
     
     return df
 
