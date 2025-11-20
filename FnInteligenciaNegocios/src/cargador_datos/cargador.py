@@ -13,6 +13,36 @@ CONFIG_LOADER = ConfigLoader()
 CONFIG_CARGA = CONFIG_LOADER.get_config()
 
 
+def limpiar_identificadores_al_cargar(df: pd.DataFrame, nombre_dataset: str) -> pd.DataFrame:
+    """
+    Limpia columnas de identificadores al momento de cargar.
+    Convierte floats como 1007518.0 a strings "1007518"
+    """
+    # Columnas que deben ser limpiadas en TODOS los datasets
+    columnas_identificadores = [
+        'cedula', 'cc_nit', 'nit', 'vinculado', 'identificacion',
+        'numero', 'dsm_num', 'ds_numero', 'mcnnumcru2', 'obligacion'
+    ]
+    
+    columnas_limpiadas = []
+    
+    for col in df.columns:
+        # Buscar columnas que coincidan (case-insensitive)
+        col_lower = col.lower()
+        
+        if any(identificador in col_lower for identificador in columnas_identificadores):
+            # Esta columna necesita limpieza
+            if df[col].dtype in ['float64', 'float32', 'int64', 'int32']:
+                # Convertir a string limpio
+                df[col] = df[col].apply(lambda x: str(int(x)) if pd.notna(x) and x == int(x) else str(x) if pd.notna(x) else "")
+                columnas_limpiadas.append(col)
+    
+    if columnas_limpiadas:
+        logger.info(f"  🧹 Limpiadas {len(columnas_limpiadas)} columnas de identificadores")
+        logger.debug(f"     Columnas: {columnas_limpiadas}")
+    
+    return df
+
 def cargar_excel_con_config(ruta: Path, hojas_config: dict, 
                             nombre_dataset: str = "") -> list[pd.DataFrame]:
     """
@@ -43,7 +73,8 @@ def cargar_excel_con_config(ruta: Path, hojas_config: dict,
             # Cargar la hoja
             df = pd.read_excel(xls, sheet_name=hoja)
             logger.info(f"📄 Cargando hoja: {hoja} - {len(df):,} registros")
-            
+            # LIMPIAR COLUMNAS QUE DEBERÍAN SER STRING (cedula, numero, nit, etc)
+            df = limpiar_identificadores_al_cargar(df, nombre_dataset)
             # === CORRECCIONES ESPECÍFICAS DURANTE LA CARGA ===
             
             # CORRECCIÓN 1: FNZ007 - Eliminar columnas 43-88 en ciertos cortes

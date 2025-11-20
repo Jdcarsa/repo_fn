@@ -107,7 +107,7 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     logger.info("8️⃣ Filtrando registros 'NA-'...")
     Cosechas, eliminados = filtrar_registros_na(Cosechas)
     logger.info("")
-    
+    logger.info(f"   📊 Registros eliminados: {len(eliminados):,}")
     # Resumen final
     logger.info("="*70)
     logger.info("✅ COSECHAS COMPLETADO")

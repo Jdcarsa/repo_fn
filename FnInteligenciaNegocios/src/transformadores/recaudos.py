@@ -48,6 +48,9 @@ def procesar_recaudos(df: pd.DataFrame) -> pd.DataFrame:
         df_proc.rename(columns=renames, inplace=True)
         logger.info(f"Columnas renombradas en Recaudos: {renames}")
 
+    from .base import limpiar_columnas_numericas_como_string
+    df_proc = limpiar_columnas_numericas_como_string(df_proc, ['cedula', 'numero'])
+    
     # 3. Convertir tipos de datos
     if 'corte' in df_proc.columns:
         df_proc['corte'] = pd.to_datetime(df_proc['corte'], errors='coerce')

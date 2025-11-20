@@ -9,7 +9,7 @@ from src.utilidades.logger import configurar_logger
 logger = configurar_logger('finnovarisk.exportador')
 
 
-def guardar_excel(df: pd.DataFrame, nombre: str, carpeta: str = "salidas"):
+def guardar_excel(df: pd.DataFrame, nombre: str, carpeta: str = "./datos/salidas"):
     """
     Guarda un DataFrame en Excel con timestamp.
     
@@ -50,7 +50,7 @@ def guardar_excel(df: pd.DataFrame, nombre: str, carpeta: str = "salidas"):
         raise
 
 
-def guardar_multiples_hojas(dict_dataframes: dict, nombre_archivo: str, carpeta: str = "salidas"):
+def guardar_multiples_hojas(dict_dataframes: dict, nombre_archivo: str, carpeta: str = "./datos/salidas"):
     """
     Guarda múltiples DataFrames en un solo Excel con diferentes hojas.
     

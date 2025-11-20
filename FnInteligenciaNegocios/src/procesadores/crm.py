@@ -31,10 +31,12 @@ def crear_crm(df_fnz007: pd.DataFrame, df_ac: pd.DataFrame) -> pd.DataFrame:
     
     # PASO 1: Copiar BaseFNZ
     logger.info("1️⃣ Copiando base FNZ007...")
+    logger.info(f"   Columnas BaseFNZ007: {len(df_fnz007.columns)}")
+    logger.info(f"   Muestra BaseFNZ007:\n{df_fnz007.head(10)}")
     CRM = df_fnz007.copy()
     registros_inicial = len(CRM)
+    logger.info(f"Columnas en CRM inicial:{CRM.columns.tolist()}")
     logger.info(f"   ✅ CRM inicial: {registros_inicial:,} registros")
-    logger.info("")
     
     # PASO 2: Join con BaseAC (primer registro por cedula_numero)
     logger.info("2️⃣ JOIN con Análisis de Cartera (primer registro)...")
@@ -60,6 +62,32 @@ def crear_crm(df_fnz007: pd.DataFrame, df_ac: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"📊 Nuevas columnas de rango: rango_ingresos, rango_avaluo, rango_monto, rango_gastos, rango_edad, rango_cuotas")
     logger.info("="*70)
     logger.info("")
+    
+    # --- Seleccionar solo las columnas que aparecen en el Excel del R ---
+    columnas_r = [
+        'numero', 'analista', 'fecha', 'ciudad', 'nomciudad', 'fs0vende', 'vennombre',
+        'ccosto', 'cconombre', 'fs0montoap', 'cuotas', 'valor_tota', 'fs1sexo',
+        'fs1nacfec', 'fs1estcvil', 'npercargo', 'vvdatipo', 'vvdaaval', 'ingresos',
+        'gastos', 'nvescolar', 'corte2', 'act_lab', 'empresa', 'cargos', 'cedula',
+        'corte', 'cedula_numero', 'valor', 'fechapag', 'valatras', 'saldofac',
+        'cuotaatras', 'valorcuota', 'totcuotas', 'cuotaspag', 'rango_ingresos',
+        'rango_avaluo', 'rango_monto', 'rango_gastos', 'edad', 'rango_edad',
+        'rango_cuotas'
+    ]
+
+    # ✅ Usar CRM (mayúsculas)
+    CRM = CRM.rename(columns={'nomciudad': 'ciudad'})
+
+    if 'corte2' not in CRM.columns and 'corte' in CRM.columns:
+        CRM['corte2'] = CRM['corte']
+
+    cols_ok = [c for c in columnas_r if c in CRM.columns]
+    CRM = CRM[cols_ok]
+
+    logger.info(f"✅ CRM ajustado a columnas del R: {len(CRM.columns)} columnas")
+    
+    CRM = CRM.drop_duplicates()
+    logger.info(f"   🗑️  Duplicados eliminados: {registros_inicial - len(CRM):,} filas")
     
     return CRM
 

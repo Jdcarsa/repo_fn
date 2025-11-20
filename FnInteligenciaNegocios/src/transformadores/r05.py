@@ -33,8 +33,13 @@ def procesar_r05(df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"   Columnas disponibles: {list(df_proc.columns)}")
     logger.info("")
 
-    # PASO 2: Eliminar mcnfecha (ya viene 'corte' del cargador)
-    logger.info("📋 PASO 2: Eliminar mcnfecha")
+    # PASO 2.1: Calcular corte desde mcnfecha
+    logger.info("📋 PASO 2: Calcular corte desde mcnfecha")
+    df_proc = calcular_corte_fin_mes(df_proc)
+    logger.info("")
+
+    # PASO 2.1: Eliminar mcnfecha (ya viene 'corte' del cargador)
+    logger.info("📋 PASO 2.1: Eliminar mcnfecha")
     if 'mcnfecha' in df_proc.columns:
         df_proc = df_proc.drop(columns=['mcnfecha'])
         logger.info("   ✅ Eliminada columna 'mcnfecha' (ya existe 'corte' del cargador)")
@@ -120,8 +125,10 @@ def identificar_y_renombrar_r05(df: pd.DataFrame) -> pd.DataFrame:
 
 def convertir_tipos_r05(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convierte tipos de datos en R05.
+    Convierte tipos de datos en R05, LIMPIANDO el .0
     """
+    from .base import limpiar_columna_identificador
+    
     # Convertir 'corte' a datetime
     if 'corte' in df.columns:
         df['corte'] = pd.to_datetime(df['corte'], errors='coerce')
@@ -140,14 +147,14 @@ def convertir_tipos_r05(df: pd.DataFrame) -> pd.DataFrame:
         else:
             logger.info(f"   ✅ 'abono' convertido a numérico")
     
-    # Convertir 'cedula' y 'numero' a string
+    # Convertir 'cedula' y 'numero' a string LIMPIO
     if 'cedula' in df.columns:
-        df['cedula'] = df['cedula'].astype(str).fillna('').str.strip()
-        logger.info(f"   ✅ 'cedula' convertido a string")
+        df['cedula'] = limpiar_columna_identificador(df['cedula'])
+        logger.info(f"   ✅ 'cedula' limpiado y convertido a string")
     
     if 'numero' in df.columns:
-        df['numero'] = df['numero'].astype(str).fillna('').str.strip()
-        logger.info(f"   ✅ 'numero' convertido a string")
+        df['numero'] = limpiar_columna_identificador(df['numero'])
+        logger.info(f"   ✅ 'numero' limpiado y convertido a string")
     
     return df
 
@@ -165,16 +172,16 @@ def crear_llave_cedula_numero_r05(df: pd.DataFrame) -> pd.DataFrame:
         return df
     
     # ✅ USAR "_" (guion bajo) como separador
-    df['cedula_numero'] = df['cedula'] + '_' + df['numero']
+    df['cedula_numero'] = df['cedula'] + '-' + df['numero']
     
     llaves_validas = df['cedula_numero'].notna().sum()
-    llaves_vacias = (df['cedula_numero'] == '_').sum()
+    llaves_vacias = (df['cedula_numero'] == '-').sum()
     
-    logger.info(f"   ✅ cedula_numero creada con '_' (guion bajo)")
+    logger.info(f"   ✅ cedula_numero creada con '-' (guion bajo)")
     logger.info(f"   📊 Llaves válidas: {llaves_validas:,}")
     
     if llaves_vacias > 0:
-        logger.warning(f"   ⚠️  {llaves_vacias:,} llaves vacías ('_')")
+        logger.warning(f"   ⚠️  {llaves_vacias:,} llaves vacías ('-')")
     
     return df
 
@@ -222,5 +229,26 @@ def agrupar_duplicados_r05(df: pd.DataFrame) -> pd.DataFrame:
     # Renombrar 'abono' a 'ABONO1'
     df.rename(columns={'abono': 'ABONO1'}, inplace=True)
     logger.info(f"   ✅ Columna renombrada: 'abono' → 'ABONO1'")
+    
+    return df
+
+def calcular_corte_fin_mes(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcula el fin de mes desde MCNFECHA.
+    
+    Según R (línea 695):
+    ABONOS$corte <- ceiling_date(ABONOS$MCNFECHA, unit = "month") - days(1)
+    """
+    if 'mcnfecha' not in df.columns:
+        logger.warning("   ⚠️  No existe 'mcnfecha'")
+        return df
+    
+    # Convertir a datetime
+    df['mcnfecha'] = pd.to_datetime(df['mcnfecha'], errors='coerce')
+    
+    # Calcular fin de mes (ceiling_date + 1 mes - 1 día)
+    df['corte'] = (df['mcnfecha'] + pd.offsets.MonthEnd(0))
+    
+    logger.info(f"   ✅ 'corte' calculado desde 'mcnfecha'")
     
     return df

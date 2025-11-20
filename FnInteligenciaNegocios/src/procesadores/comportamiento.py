@@ -2,7 +2,7 @@
 Módulo para crear el DataFrame de Comportamiento.
 Pivota datos de mora por fecha de corte (versión horizontal).
 """
-
+#SIRVE
 import pandas as pd
 import numpy as np
 from src.utilidades.logger import configurar_logger
@@ -85,6 +85,29 @@ def crear_comportamiento(df_ac: pd.DataFrame,
     logger.info("="*70)
     logger.info("")
     
+    fecha_cols = [c for c in ComportamientoH.columns if c.startswith('fechafac_')]
+    for col in fecha_cols:
+        if ComportamientoH[col].dtype == 'object' and isinstance(ComportamientoH[col].iloc[0], list):
+            ComportamientoH[col] = ComportamientoH[col].apply(
+                lambda x: x[0] if isinstance(x, list) and len(x) > 0 else None
+            )
+
+    columnas_r_orden = [
+        'cedula_numero'
+    ] + sorted([c for c in ComportamientoH.columns if c.startswith('diasatras_')]) + \
+    sorted([c for c in ComportamientoH.columns if c.startswith('vlrini_')]) + \
+    sorted([c for c in ComportamientoH.columns if c.startswith('fechafac_')]) + \
+    sorted([c for c in ComportamientoH.columns if c.startswith('valatras_')]) + \
+    sorted([c for c in ComportamientoH.columns if c.startswith('saldofac_')]) + \
+    sorted([c for c in ComportamientoH.columns if c.startswith('valorcuota_')]) + \
+    sorted([c for c in ComportamientoH.columns if c.startswith('Mora_')]) + \
+    ['valor', 'calificacion']
+
+    # Filtrar columnas que existen
+    columnas_finales = [c for c in columnas_r_orden if c in ComportamientoH.columns]
+    ComportamientoH = ComportamientoH[columnas_finales]
+
+    logger.info(f"✅ Columnas ordenadas como R: {len(ComportamientoH.columns)} columnas")
     return ComportamientoH
 
 
@@ -206,6 +229,14 @@ def pivotar_comportamiento(df: pd.DataFrame) -> pd.DataFrame:
     
     # Reset index
     df_pivotado = df_pivotado.reset_index()
+    
+    # ── formatear fechas pivoteadas ---------------------------------
+    fecha_cols = [c for c in df_pivotado.columns if c.startswith('fechafac_')]
+    for col in fecha_cols:
+        df_pivotado[col] = (
+            pd.to_datetime(df_pivotado[col], errors='coerce')
+            .dt.strftime('%d/%m/%Y')        
+        )
     
     registros_despues = len(df_pivotado)
     
@@ -421,3 +452,4 @@ def convertir_puntos_a_na(df: pd.DataFrame, mora_columns: list) -> pd.DataFrame:
         df[col] = df[col].replace('.', np.nan)
     
     return df
+

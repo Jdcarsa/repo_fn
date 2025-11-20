@@ -273,39 +273,39 @@ def main():
         logger.info("")
         
         # Crear carpeta de salidas
-        carpeta_salidas = Path("salidas")
+        carpeta_salidas = Path("./datos/salidas")
         carpeta_salidas.mkdir(exist_ok=True)
         
         # 4.1 Guardar Cosechas
         logger.info("1️⃣  Guardando Cosechas...")
-        ruta_cosechas = guardar_excel(Cosechas, "Cosechas", "salidas")
+        ruta_cosechas = guardar_excel(Cosechas, "Cosechas", "./datos/salidas")
         logger.info("")
         
         # Guardar Cosechas eliminados
         if len(Cosechas_eliminados) > 0:
             logger.info("   📄 Guardando Cosechas eliminados...")
-            ruta_eliminados = guardar_excel(Cosechas_eliminados, "Cosechas_Eliminados", "salidas")
+            ruta_eliminados = guardar_excel(Cosechas_eliminados, "Cosechas_Eliminados", ".datos/salidas")
             logger.info("")
         
         # 4.2 Guardar CRM
         logger.info("2️⃣  Guardando CRM...")
-        ruta_crm = guardar_excel(CRM, "CRM", "salidas")
+        ruta_crm = guardar_excel(CRM, "CRM", "./datos/salidas")
         logger.info("")
         
         # 4.3 Guardar Comportamiento
         logger.info("3️⃣  Guardando Comportamiento...")
-        ruta_comportamiento = guardar_excel(Comportamiento, "Comportamiento", "salidas")
+        ruta_comportamiento = guardar_excel(Comportamiento, "Comportamiento", "./datos/salidas")
         logger.info("")
         
         # 4.4 Guardar BaseFNZ (opcional - si es necesario)
         logger.info("4️⃣  Guardando BaseFNZ (completo)...")
-        ruta_basefnz = guardar_excel(BaseFNZ_final, "BaseFNZ_Completo", "salidas")
+        ruta_basefnz = guardar_excel(BaseFNZ_final, "BaseFNZ_Completo", "./datos/salidas")
         logger.info("")
         
         # 4.5 Guardar BaseEdades (si existe)
         if df_edades is not None and len(df_edades) > 0:
             logger.info("5️⃣  Guardando BaseEdades...")
-            ruta_edades = guardar_excel(df_edades, "BaseEdades", "salidas")
+            ruta_edades = guardar_excel(df_edades, "BaseEdades", "./datos/salidas")
             logger.info("")
         
         logger.info("=" * 70)

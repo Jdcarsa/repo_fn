@@ -87,25 +87,21 @@ def renombrar_columnas_fnz001(df: pd.DataFrame) -> pd.DataFrame:
 
 def convertir_tipos_fnz001(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convierte tipos de datos según R:
-    - numero: as.character(as.numeric(numero))
-    - corte: ya viene como Date del cargador
-    - cedula: character
-    - valor: numeric
+    Convierte tipos de datos según R, LIMPIANDO el .0
     """
+    from .base import limpiar_columna_identificador
+    
     df_proc = df.copy()
     
-    # Convertir 'numero' a string (como en R: as.character(as.numeric()))
+    # Convertir 'numero' - LIMPIAR .0
     if 'numero' in df_proc.columns:
-        # Primero a numérico para limpiar, luego a string
-        df_proc['numero'] = pd.to_numeric(df_proc['numero'], errors='coerce')
-        df_proc['numero'] = df_proc['numero'].astype(str).str.replace('\.0$', '', regex=True)
-        logger.info(f"   ✅ 'numero' convertido a string")
+        df_proc['numero'] = limpiar_columna_identificador(df_proc['numero'])
+        logger.info(f"   ✅ 'numero' limpiado y convertido a string")
     
-    # Convertir 'cedula' a string
+    # Convertir 'cedula' - LIMPIAR .0
     if 'cedula' in df_proc.columns:
-        df_proc['cedula'] = df_proc['cedula'].astype(str).str.strip()
-        logger.info(f"   ✅ 'cedula' convertido a string")
+        df_proc['cedula'] = limpiar_columna_identificador(df_proc['cedula'])
+        logger.info(f"   ✅ 'cedula' limpiado y convertido a string")
     
     # Verificar 'corte' (ya debería ser datetime del cargador)
     if 'corte' in df_proc.columns:

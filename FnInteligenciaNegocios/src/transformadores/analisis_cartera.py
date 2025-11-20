@@ -28,7 +28,11 @@ def procesar_analisis_cartera(df: pd.DataFrame) -> pd.DataFrame:
     # 1. Convertir nombres de columnas a minúsculas
     df_proc = convertir_columnas_minusculas(df_proc, "Análisis de Cartera")
 
-    # 2. Eliminar columnas innecesarias
+    # 2. LIMPIAR cedula y numero ANTES de crear la llave
+    from .base import limpiar_columnas_numericas_como_string
+    df_proc = limpiar_columnas_numericas_como_string(df_proc, ['cedula', 'numero'])
+
+    # 3. Eliminar columnas innecesarias
     columnas_a_eliminar = [
         'reg', 'clase', 'tipo', 'nombre', 'telefono', 'ultpago', 'fechanov', 
         'fechacom', 'totfactura', 'intepagado', 'interespdte', 'direccion', 
@@ -38,7 +42,7 @@ def procesar_analisis_cartera(df: pd.DataFrame) -> pd.DataFrame:
     
     df_proc = eliminar_columnas(df_proc, columnas_a_eliminar, "Análisis de Cartera")
 
-    # 3. Crear la llave 'cedula_numero'
+    # 4. Crear la llave 'cedula_numero'
     df_proc = crear_llave_cedula_numero(df_proc, 'cedula', 'numero')
 
     logger.info("Limpieza y procesamiento de Análisis de Cartera completado.")
