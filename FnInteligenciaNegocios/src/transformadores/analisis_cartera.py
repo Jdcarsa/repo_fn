@@ -51,6 +51,7 @@ def procesar_analisis_cartera(df: pd.DataFrame) -> pd.DataFrame:
 def manejar_duplicados_ac(df: pd.DataFrame) -> pd.DataFrame:
     """
     Maneja los registros duplicados en el DataFrame de Análisis de Cartera.
+    IGUAL QUE R: Solo agrupa los duplicados, mantiene únicos intactos.
     """
     logger.info("Manejando duplicados en Análisis de Cartera...")
     if 'cedula_numero' not in df.columns or 'corte' not in df.columns:
@@ -59,11 +60,47 @@ def manejar_duplicados_ac(df: pd.DataFrame) -> pd.DataFrame:
 
     registros_antes = len(df)
     
+    # ========================================
+    # PASO 1: Identificar duplicados (IGUAL QUE R)
+    # ========================================
+    duplicados_info = df.groupby(['cedula_numero', 'corte']).size().reset_index(name='n')
+    duplicados_info = duplicados_info[duplicados_info['n'] > 1]
+    
+    num_duplicados = len(duplicados_info)
+    logger.info(f"   📊 Grupos duplicados encontrados: {num_duplicados:,}")
+    
+    if num_duplicados == 0:
+        logger.info("   ✅ No hay duplicados - DataFrame sin cambios")
+        return df
+    
+    # ========================================
+    # PASO 2: Separar duplicados de únicos
+    # ========================================
+    # Crear máscara de duplicados
+    df_con_marcador = df.merge(
+        duplicados_info[['cedula_numero', 'corte']],
+        on=['cedula_numero', 'corte'],
+        how='left',
+        indicator=True
+    )
+    
+    # Registros únicos (NO están en duplicados)
+    df_unicos = df_con_marcador[df_con_marcador['_merge'] == 'left_only'].drop(columns=['_merge'])
+    
+    # Registros duplicados (SÍ están en duplicados)
+    df_duplicados = df_con_marcador[df_con_marcador['_merge'] == 'both'].drop(columns=['_merge'])
+    
+    logger.info(f"   📊 Registros únicos: {len(df_unicos):,}")
+    logger.info(f"   📊 Registros duplicados a agrupar: {len(df_duplicados):,}")
+    
+    # ========================================
+    # PASO 3: Agrupar SOLO los duplicados
+    # ========================================
     # Identificar columnas numéricas y no numéricas
-    columnas_numericas = df.select_dtypes(include=np.number).columns.tolist()
-    columnas_no_numericas = df.select_dtypes(exclude=np.number).columns.tolist()
+    columnas_numericas = df_duplicados.select_dtypes(include=np.number).columns.tolist()
+    columnas_no_numericas = df_duplicados.select_dtypes(exclude=np.number).columns.tolist()
 
-    # Crear el diccionario de agregación
+    # Crear diccionario de agregación
     agg_dict = {}
     for col in columnas_numericas:
         agg_dict[col] = 'sum'
@@ -72,13 +109,26 @@ def manejar_duplicados_ac(df: pd.DataFrame) -> pd.DataFrame:
         if col not in ['cedula_numero', 'corte']:
             agg_dict[col] = 'first'
 
-    # Realizar la agregación
-    df_agrupado = df.groupby(['cedula_numero', 'corte'], as_index=False).agg(agg_dict)
+    # Agrupar duplicados
+    df_duplicados_agrupados = df_duplicados.groupby(['cedula_numero', 'corte'], as_index=False).agg(agg_dict)
     
-    registros_despues = len(df_agrupado)
-    logger.info(f"Manejo de duplicados: {registros_antes:,} -> {registros_despues:,} registros.")
+    logger.info(f"   📊 Duplicados agrupados: {len(df_duplicados):,} → {len(df_duplicados_agrupados):,}")
     
-    return df_agrupado
+    # ========================================
+    # PASO 4: Reconstruir DataFrame (IGUAL QUE R)
+    # ========================================
+    # Combinar únicos + duplicados agrupados
+    df_final = pd.concat([df_unicos, df_duplicados_agrupados], ignore_index=True)
+    
+    # Reordenar columnas para que coincidan con el original
+    columnas_finales = [col for col in df.columns if col in df_final.columns]
+    df_final = df_final[columnas_finales]
+    
+    registros_despues = len(df_final)
+    logger.info(f"   ✅ DataFrame reconstruido: {registros_antes:,} → {registros_despues:,}")
+    
+    return df_final
+
 
 def crear_columna_mora_ac(df: pd.DataFrame) -> pd.DataFrame:
     """

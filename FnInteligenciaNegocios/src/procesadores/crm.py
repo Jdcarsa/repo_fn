@@ -154,6 +154,7 @@ def unir_con_ac_primer_registro(crm: pd.DataFrame, df_ac: pd.DataFrame) -> pd.Da
 def calcular_edad(crm: pd.DataFrame) -> pd.DataFrame:
     """
     Calcula la edad a partir de la fecha de nacimiento.
+    IGUAL QUE R: Usa semanas/52.25 en lugar de días/365.25
     """
     col_nacimiento = None
     for col in crm.columns:
@@ -169,18 +170,25 @@ def calcular_edad(crm: pd.DataFrame) -> pd.DataFrame:
 
     fecha_actual = datetime.now()
     
-    # Calcular edad en años decimales
-    edad_decimal = (fecha_actual - crm[col_nacimiento]).dt.days / 365.25
+    # ========================================
+    # CAMBIO: Calcular edad usando SEMANAS (IGUAL QUE R)
+    # ========================================
+    # R: as.numeric(difftime(Sys.Date(), CRM$fs1nacfec, units = "weeks")) %/% 52.25
     
-    # Convertir a enteros (edad cumplida) de forma vectorizada
+    diferencia_dias = (fecha_actual - crm[col_nacimiento]).dt.days
+    diferencia_semanas = diferencia_dias / 7.0  # Convertir días a semanas
+    edad_decimal = diferencia_semanas / 52.25    # Dividir por semanas en un año
+    
+    # Convertir a enteros (edad cumplida)
     crm['edad'] = np.floor(edad_decimal).astype('Int64')
     
     logger.debug(f"   Muestra de edades calculadas:\n{crm['edad'].head(50)}")
 
     validas = crm['edad'].notna().sum()
     edad_promedio = crm['edad'].mean()
-    logger.info(f"   ✅ Edad calculada: {validas:,} registros válidos")
+    logger.info(f"   ✅ Edad calculada (usando semanas/52.25): {validas:,} registros válidos")
     logger.info(f"   📊 Edad promedio: {edad_promedio:.1f} años")
+    
     return crm
 
 

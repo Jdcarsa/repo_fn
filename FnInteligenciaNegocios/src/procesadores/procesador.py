@@ -205,7 +205,12 @@ def unir_datasets(df_fnz007, df_ac, df_fnz001, df_edades, df_r05, df_recaudos, d
         logger.warning("   ⚠️ Estado Desembolsos no disponible - Filtro omitido")
     
     logger.info("")
-    
+
+
+    logger.info("7️⃣ Eliminando duplicados más recientes de BaseFNZ")
+    logger.info("-"*40)
+    BaseFNZ = eliminar_duplicados_mas_recientes(BaseFNZ)
+    logger.info(f"   ✅ Duplicados eliminados: {registros_antes:,} → {len(BaseFNZ):,}")
     # ========================================
     # RESUMEN FINAL
     # ========================================
@@ -219,3 +224,30 @@ def unir_datasets(df_fnz007, df_ac, df_fnz001, df_edades, df_r05, df_recaudos, d
     logger.info("")
     
     return BaseFNZ
+
+
+
+# FALTA AGREGAR en procesador.py o fnz007.py
+
+def eliminar_duplicados_mas_recientes(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Elimina el registro más reciente de cada cedula_numero duplicada.
+    """
+    df = df.copy()
+    
+    # Contar duplicados
+    df['total'] = df.groupby('cedula_numero')['cedula_numero'].transform('count')
+    
+    # Ordenar por corte dentro de cada grupo
+    df = df.sort_values(['cedula_numero', 'corte'])
+    
+    # Marcar el más reciente
+    df['es_mas_reciente'] = df.groupby('cedula_numero').cumcount() == (df['total'] - 1)
+    
+    # Filtrar: eliminar SOLO si es duplicado Y es el más reciente
+    df = df[~((df['total'] > 1) & df['es_mas_reciente'])]
+    
+    # Limpiar columnas auxiliares
+    df = df.drop(columns=['total', 'es_mas_reciente'])
+    
+    return df

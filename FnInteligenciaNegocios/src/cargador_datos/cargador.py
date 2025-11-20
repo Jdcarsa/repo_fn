@@ -177,7 +177,7 @@ def corregir_fechadoc_ac(df: pd.DataFrame, hoja: str) -> pd.DataFrame:
     """
     # Cortes que requieren eliminación de fechadoc
     cortes_con_fechadoc = ["AGOSTO 24", "FEBRERO 25", "MARZO 25", "SEPTIEMBRE 25"]
-    
+    cortes_con_FACTURA = ['OCTUBRE 25']
     # === CORRECCIÓN 1: ELIMINAR FECHADOC ===
     hoja_upper = hoja.upper().strip()
     
@@ -191,6 +191,16 @@ def corregir_fechadoc_ac(df: pd.DataFrame, hoja: str) -> pd.DataFrame:
         else:
             logger.info(f"  ℹ️  {hoja}: No tiene columna 'fechadoc'")
     
+    if hoja_upper in [corte.upper() for corte in cortes_con_FACTURA]:
+        
+        # Buscar columna FACTURA (case-insensitive)
+        cols_factura = [col for col in df.columns if col.lower() == 'factura']
+        
+        if cols_factura:
+            df = df.drop(columns=cols_factura)
+            logger.info(f"  🔧 {hoja}: Eliminada columna '{cols_factura[0]}'")
+        else:
+            logger.info(f"  ℹ️  {hoja}: No tiene columna 'FACTURA'")
     # === CORRECCIÓN 2: NORMALIZAR DIAS ATRASO ===
     # Buscar TODAS las variaciones posibles (case-insensitive, con/sin espacio)
     col_dias_atraso = None
