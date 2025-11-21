@@ -11,14 +11,13 @@ from src.utilidades.logger import configurar_logger
 logger = configurar_logger('finnovarisk.cosechas')
 
 
-def crear_cosechas(df_fnz007: pd.DataFrame, 
+def crear_cosechas(df_fnz007: pd.DataFrame,
                    df_ac: pd.DataFrame,
                    df_edades: pd.DataFrame = None,
                    df_r05: pd.DataFrame = None,
                    df_recaudos: pd.DataFrame = None) -> pd.DataFrame:
     """
     Crea el DataFrame de Cosechas uniendo múltiples fuentes.
-    
     Según R (líneas ~830-900):
     1. Seleccionar columnas de BaseFNZ: cedula_numero, corte, corte2, valor, fecha
     2. Full join con BaseAC (diasatras, fechafac, vlrini, valatras, saldofac)
@@ -28,7 +27,6 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     6. Corregir fechafac vacías
     7. Crear fechafac_ajustada (un mes antes)
     8. Filtrar registros con "NA-\d+"
-    
     Returns:
         DataFrame de Cosechas procesado
     """
@@ -36,45 +34,49 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     logger.info("🌾 CREANDO COSECHAS")
     logger.info("="*70)
     logger.info("")
-    
+
     # PASO 1: Seleccionar columnas de BaseFNZ
     logger.info("1️⃣ Seleccionando columnas base de FNZ007...")
-    
-    columnas_base = ['cedula_numero', 'corte', 'valor', 'fecha']
-    
-    # Verificar qué columnas existen
+    columnas_base = ['cedula_numero', 'corte', 'corte2', 'valor', 'fecha']
     columnas_disponibles = [col for col in columnas_base if col in df_fnz007.columns]
     columnas_faltantes = set(columnas_base) - set(columnas_disponibles)
-    
     if columnas_faltantes:
         logger.warning(f"   ⚠️  Columnas faltantes en FNZ007: {columnas_faltantes}")
-        # Usar solo las disponibles
         columnas_base = columnas_disponibles
-    
-    # Crear Cosechas inicial
+
     Cosechas = df_fnz007[columnas_base].copy()
 
-    # Agregar corte2 si existe (es corte.x en el R)
-    if 'corte2' in df_fnz007.columns:
-        Cosechas['corte2'] = df_fnz007['corte2']
-    
+    # Asegurar corte2 siempre (igual que R)
+    if 'corte2' not in Cosechas.columns and 'corte' in Cosechas.columns:
+        Cosechas['corte2'] = Cosechas['corte']
+
+    # Validar columna valor antes de continuar
+    if 'valor' not in Cosechas.columns:
+        logger.error("❌ Cosechas no tiene 'valor' – CRM y PowerBI quedarán sin monto")
+
     logger.info(f"   ✅ Cosechas inicial: {len(Cosechas):,} registros, {len(Cosechas.columns)} columnas")
     logger.info("")
-    
+
     # PASO 2: Full join con BaseAC
     logger.info("2️⃣ JOIN con Análisis de Cartera...")
     Cosechas = unir_con_ac(Cosechas, df_ac)
     logger.info("")
-    
+
     # PASO 3: Full join con Edades
     if df_edades is not None and len(df_edades) > 0:
         logger.info("3️⃣ JOIN con Edades...")
+        # Validar columnas críticas antes del join
+        cols_edades_must = {'capital', 'interes', 'otros', 'totalpago'}
+        cols_edades_lower = {c.lower() for c in df_edades.columns}
+        faltan = cols_edades_must - cols_edades_lower
+        if faltan:
+            logger.warning(f"⚠️ Edades no contiene {faltan} – columnas quedarán vacías")
         Cosechas = unir_con_edades(Cosechas, df_edades)
         logger.info("")
     else:
         logger.warning("3️⃣ Edades no disponible - JOIN omitido")
         logger.info("")
-    
+
     # PASO 4: Full join con R05
     if df_r05 is not None and len(df_r05) > 0:
         logger.info("4️⃣ JOIN con R05...")
@@ -83,7 +85,7 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     else:
         logger.warning("4️⃣ R05 no disponible - JOIN omitido")
         logger.info("")
-    
+
     # PASO 5: Full join con Recaudos
     if df_recaudos is not None and len(df_recaudos) > 0:
         logger.info("5️⃣ JOIN con Recaudos...")
@@ -92,22 +94,23 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     else:
         logger.warning("5️⃣ Recaudos no disponible - JOIN omitido")
         logger.info("")
-    
+
     # PASO 6: Corregir fechafac vacías
     logger.info("6️⃣ Corrigiendo fechas de facturación...")
     Cosechas = corregir_fechafac(Cosechas)
     logger.info("")
-    
+
     # PASO 7: Crear fechafac_ajustada
     logger.info("7️⃣ Creando fechafac_ajustada (un mes antes)...")
     Cosechas = crear_fechafac_ajustada(Cosechas)
     logger.info("")
-    
+
     # PASO 8: Filtrar registros NA-\d+
     logger.info("8️⃣ Filtrando registros 'NA-'...")
     Cosechas, eliminados = filtrar_registros_na(Cosechas)
     logger.info("")
     logger.info(f"   📊 Registros eliminados: {len(eliminados):,}")
+
     # Resumen final
     logger.info("="*70)
     logger.info("✅ COSECHAS COMPLETADO")
@@ -117,6 +120,7 @@ def crear_cosechas(df_fnz007: pd.DataFrame,
     logger.info(f"📊 Memoria: {Cosechas.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
     logger.info("="*70)
     logger.info("")
+
     Cosechas = Cosechas.drop_duplicates().reset_index(drop=True)
     return Cosechas, eliminados
 

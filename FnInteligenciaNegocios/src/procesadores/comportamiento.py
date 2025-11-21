@@ -233,9 +233,14 @@ def pivotar_comportamiento(df: pd.DataFrame) -> pd.DataFrame:
     # ── formatear fechas pivoteadas ---------------------------------
     fecha_cols = [c for c in df_pivotado.columns if c.startswith('fechafac_')]
     for col in fecha_cols:
+        # Si hay listas, tomar el primer valor
+        df_pivotado[col] = df_pivotado[col].apply(
+            lambda x: x[0] if isinstance(x, list) and len(x) > 0 else x
+        )
+        # Ahora sí convertir a datetime
         df_pivotado[col] = (
             pd.to_datetime(df_pivotado[col], errors='coerce')
-            .dt.strftime('%d/%m/%Y')        
+            .dt.strftime('%d/%m/%Y')
         )
     
     registros_despues = len(df_pivotado)

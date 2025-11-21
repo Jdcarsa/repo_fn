@@ -31,11 +31,8 @@ def crear_crm(df_fnz007: pd.DataFrame, df_ac: pd.DataFrame) -> pd.DataFrame:
     
     # PASO 1: Copiar BaseFNZ
     logger.info("1️⃣ Copiando base FNZ007...")
-    logger.info(f"   Columnas BaseFNZ007: {len(df_fnz007.columns)}")
-    logger.info(f"   Muestra BaseFNZ007:\n{df_fnz007.head(10)}")
     CRM = df_fnz007.copy()
     registros_inicial = len(CRM)
-    logger.info(f"Columnas en CRM inicial:{CRM.columns.tolist()}")
     logger.info(f"   ✅ CRM inicial: {registros_inicial:,} registros")
     
     # PASO 2: Join con BaseAC (primer registro por cedula_numero)
